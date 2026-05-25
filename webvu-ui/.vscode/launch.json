@@ -9,7 +9,7 @@
       "serverReadyAction": {
         "pattern": "Local:.+(https?://\\S+)",
         "uriFormat": "%s",
-        "action": "openExternally"
+        "action": "debugWithChrome"
       },
       "env": {
         "NEXT_PUBLIC_API_URL": "http://localhost:3000"
