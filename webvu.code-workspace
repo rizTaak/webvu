@@ -4,5 +4,35 @@
     { "path": "webvu-ui", "name": "webvu-ui" },
     { "path": "webvu-infra", "name": "webvu-infra" }
   ],
-  "settings": {}
+  "settings": {},
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Start webvu-api",
+        "type": "shell",
+        "command": "npm run start:dev",
+        "options": { "cwd": "${workspaceFolder:webvu-api}" },
+        "isBackground": true,
+        "problemMatcher": []
+      },
+      {
+        "label": "Start webvu-ui",
+        "type": "shell",
+        "command": "npm run dev",
+        "options": {
+          "cwd": "${workspaceFolder:webvu-ui}",
+          "env": { "NEXT_PUBLIC_API_URL": "http://localhost:3000" }
+        },
+        "isBackground": true,
+        "problemMatcher": []
+      },
+      {
+        "label": "Start All",
+        "dependsOn": ["Start webvu-api", "Start webvu-ui"],
+        "dependsOrder": "parallel",
+        "problemMatcher": []
+      }
+    ]
+  }
 }
