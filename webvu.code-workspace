@@ -1,0 +1,8 @@
+{
+  "folders": [
+    { "path": "webvu-api", "name": "webvu-api" },
+    { "path": "webvu-ui", "name": "webvu-ui" },
+    { "path": "webvu-infra", "name": "webvu-infra" }
+  ],
+  "settings": {}
+}
