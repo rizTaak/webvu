@@ -29,13 +29,13 @@ export class WebvuInfraStack extends cdk.Stack {
     const apiRepo = new ecr.Repository(this, 'ApiRepo', {
       repositoryName: 'webvu-api',
       removalPolicy: cdk.RemovalPolicy.RETAIN,
-      lifecycleRules: [{ maxImageCount: 10 }],
+      lifecycleRules: [{ maxImageCount: 5 }],
     });
 
     const uiRepo = new ecr.Repository(this, 'UiRepo', {
       repositoryName: 'webvu-ui',
       removalPolicy: cdk.RemovalPolicy.RETAIN,
-      lifecycleRules: [{ maxImageCount: 10 }],
+      lifecycleRules: [{ maxImageCount: 5 }],
     });
 
     // Image tags passed in via cdk deploy --context apiImageTag=v1.0.0
