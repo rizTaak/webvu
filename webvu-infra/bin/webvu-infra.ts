@@ -11,8 +11,8 @@ const env = {
   region: process.env.CDK_DEFAULT_REGION ?? 'us-east-1',
 };
 
-// Permanent — never destroy this stack (holds ECR repos + Route 53 zone)
+// Permanent — never destroy this stack (holds ECR repos, images, and ACM cert)
 const ecrStack = new WebvuEcrStack(app, 'WebvuEcrStack', { env });
 
 // Compute — safe to destroy when not in use to save costs
-new WebvuInfraStack(app, 'WebvuInfraStack', { env, originZone: ecrStack.originZone });
+new WebvuInfraStack(app, 'WebvuInfraStack', { env, certificateArn: ecrStack.certificateArn });

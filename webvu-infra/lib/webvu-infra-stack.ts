@@ -5,12 +5,10 @@ import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import * as route53 from 'aws-cdk-lib/aws-route53';
-import * as route53targets from 'aws-cdk-lib/aws-route53-targets';
 import { Construct } from 'constructs';
 
 export interface WebvuInfraStackProps extends cdk.StackProps {
-  originZone: route53.IHostedZone;
+  certificateArn: string;
 }
 
 export class WebvuInfraStack extends cdk.Stack {
@@ -20,7 +18,10 @@ export class WebvuInfraStack extends cdk.Stack {
     // VPC — 2 AZs, single NAT gateway to keep costs minimal
     const vpc = new ec2.Vpc(this, 'WebvuVpc', {
       maxAzs: 2,
-      natGateways: 1,
+      natGateways: 0,
+      subnetConfiguration: [
+        { name: 'Public', subnetType: ec2.SubnetType.PUBLIC, cidrMask: 24 },
+      ],
     });
 
     // ECS Cluster
@@ -52,14 +53,8 @@ export class WebvuInfraStack extends cdk.Stack {
       albSg.addIngressRule(ec2.Peer.ipv6(cidr), ec2.Port.tcp(443), 'Cloudflare IPv6');
     }
 
-    // ACM certificate — CDK pauses here until DNS validation is complete.
-    // Add the CNAME record shown in CloudFormation events to Cloudflare (DNS-only, NOT proxied).
-    const certificate = new acm.Certificate(this, 'WebvuCert', {
-      domainName: 'webvu.io',
-      // *.webvu.io covers www, plus all tenant subdomains (mybakery.webvu.io, etc.)
-      subjectAlternativeNames: ['*.webvu.io'],
-      validation: acm.CertificateValidation.fromDns(),
-    });
+    // Certificate is managed in WebvuEcrStack (permanent) so it survives teardowns.
+    const certificate = acm.Certificate.fromCertificateArn(this, 'WebvuCert', props.certificateArn);
 
     // Application Load Balancer
     const alb = new elbv2.ApplicationLoadBalancer(this, 'WebvuAlb', {
@@ -96,6 +91,8 @@ export class WebvuInfraStack extends cdk.Stack {
       cluster,
       taskDefinition: apiTaskDef,
       desiredCount,
+      vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
+      assignPublicIp: true,
     });
 
     // --- UI Service ---
@@ -120,6 +117,8 @@ export class WebvuInfraStack extends cdk.Stack {
       cluster,
       taskDefinition: uiTaskDef,
       desiredCount,
+      vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
+      assignPublicIp: true,
     });
 
     // --- ALB Listener ---
@@ -152,13 +151,6 @@ export class WebvuInfraStack extends cdk.Stack {
       priority: 10,
       conditions: [elbv2.ListenerCondition.pathPatterns(['/api/*'])],
       action: elbv2.ListenerAction.forward([apiTargetGroup]),
-    });
-
-    // Route 53 alias record — updated on every deploy, no tokens needed.
-    // Cloudflare proxies webvu.io → origin.webvu.io (static CNAME) → this alias → ALB.
-    new route53.ARecord(this, 'AlbAlias', {
-      zone: props.originZone,
-      target: route53.RecordTarget.fromAlias(new route53targets.LoadBalancerTarget(alb)),
     });
 
     // Outputs

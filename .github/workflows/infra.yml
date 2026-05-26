@@ -44,3 +44,15 @@ jobs:
             --context apiImageTag=${{ github.event.inputs.apiImageTag }} \
             --context uiImageTag=${{ github.event.inputs.uiImageTag }}
         working-directory: webvu-infra
+
+      - name: Output ALB DNS name
+        run: |
+          ALB_DNS=$(aws cloudformation describe-stacks \
+            --stack-name WebvuInfraStack \
+            --query 'Stacks[0].Outputs[?OutputKey==`AlbDnsName`].OutputValue' \
+            --output text)
+          echo "ALB DNS: $ALB_DNS"
+          echo "If this is a fresh deploy (new ALB), update Cloudflare DNS:"
+          echo "  webvu.io CNAME -> $ALB_DNS (proxied)"
+          echo "  www.webvu.io CNAME -> $ALB_DNS (proxied)"
+          echo "  *.webvu.io CNAME -> $ALB_DNS (proxied)"

@@ -1,13 +1,12 @@
 import * as cdk from 'aws-cdk-lib';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
-import * as route53 from 'aws-cdk-lib/aws-route53';
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import { Construct } from 'constructs';
 
 // Permanent stack — never destroyed, survives compute teardowns.
-// ECR images are preserved across WebvuInfraStack destroy/redeploy cycles.
+// Holds ECR repos, images, and the ACM certificate so teardowns never require re-validation.
 export class WebvuEcrStack extends cdk.Stack {
-  // Exposed so WebvuInfraStack can create an alias record in this zone without needing tokens.
-  public readonly originZone: route53.PublicHostedZone;
+  readonly certificateArn: string;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -24,19 +23,14 @@ export class WebvuEcrStack extends cdk.Stack {
       lifecycleRules: [{ maxImageCount: 5 }],
     });
 
-    // Permanent Route 53 zone for origin.webvu.io.
-    // WebvuInfraStack creates an ALB alias record here on every deploy — the Cloudflare
-    // NS delegation below never changes, so no tokens or secrets are ever needed.
-    this.originZone = new route53.PublicHostedZone(this, 'OriginZone', {
-      zoneName: 'origin.webvu.io',
+    // Certificate lives here so it survives WebvuInfraStack destroy/redeploy cycles.
+    // DNS validation: add the CNAME shown in CloudFormation events to Cloudflare (DNS-only).
+    const certificate = new acm.Certificate(this, 'WebvuCert', {
+      domainName: 'webvu.io',
+      subjectAlternativeNames: ['*.webvu.io'],
+      validation: acm.CertificateValidation.fromDns(),
     });
-    this.originZone.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN);
-
-    // Output the nameservers — you only read these once to set up Cloudflare NS records.
-    new cdk.CfnOutput(this, 'OriginZoneNameservers', {
-      description: 'Add as NS records for origin.webvu.io in Cloudflare (one-time setup, never changes)',
-      value: cdk.Fn.join(', ', this.originZone.hostedZoneNameServers!),
-    });
+    this.certificateArn = certificate.certificateArn;
   }
 }
 

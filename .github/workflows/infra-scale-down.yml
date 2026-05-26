@@ -1,0 +1,34 @@
+name: Infra - Scale Down
+
+on:
+  workflow_dispatch:
+
+jobs:
+  scale-down:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::796136114678:role/webvu-github-actions
+          aws-region: us-east-1
+
+      - name: Scale ECS services to 0
+        run: |
+          CLUSTER=$(aws cloudformation describe-stack-resources \
+            --stack-name WebvuInfraStack \
+            --query 'StackResources[?ResourceType==`AWS::ECS::Cluster`].PhysicalResourceId' \
+            --output text)
+
+          echo "Cluster: $CLUSTER"
+
+          for SERVICE in $(aws ecs list-services --cluster "$CLUSTER" --query 'serviceArns[]' --output text); do
+            echo "Scaling down: $SERVICE"
+            aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE" --desired-count 0
+          done
+
+          echo "Done. ALB stays live (~\$16/month). Run 'Infra - Scale Up' to restore traffic."
