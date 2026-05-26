@@ -41,6 +41,7 @@ export class WebvuInfraStack extends cdk.Stack {
     // Image tags passed in via cdk deploy --context apiImageTag=v1.0.0
     const apiImageTag = this.node.tryGetContext('apiImageTag') ?? 'latest';
     const uiImageTag = this.node.tryGetContext('uiImageTag') ?? 'latest';
+    const desiredCount = (apiImageTag === 'latest' || uiImageTag === 'latest') ? 0 : 1;
 
     // --- API Service ---
     const apiTaskDef = new ecs.FargateTaskDefinition(this, 'ApiTaskDef', {
@@ -60,8 +61,7 @@ export class WebvuInfraStack extends cdk.Stack {
     const apiService = new ecs.FargateService(this, 'ApiService', {
       cluster,
       taskDefinition: apiTaskDef,
-      desiredCount: 1,
-      circuitBreaker: { rollback: false },
+      desiredCount,
     });
 
     // --- UI Service ---
@@ -85,8 +85,7 @@ export class WebvuInfraStack extends cdk.Stack {
     const uiService = new ecs.FargateService(this, 'UiService', {
       cluster,
       taskDefinition: uiTaskDef,
-      desiredCount: 1,
-      circuitBreaker: { rollback: false },
+      desiredCount,
     });
 
     // --- ALB Listener ---
