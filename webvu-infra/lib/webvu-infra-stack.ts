@@ -28,13 +28,13 @@ export class WebvuInfraStack extends cdk.Stack {
     // --- ECR Repositories (images pushed by CI) ---
     const apiRepo = new ecr.Repository(this, 'ApiRepo', {
       repositoryName: 'webvu-api',
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
       lifecycleRules: [{ maxImageCount: 5 }],
     });
 
     const uiRepo = new ecr.Repository(this, 'UiRepo', {
       repositoryName: 'webvu-ui',
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
       lifecycleRules: [{ maxImageCount: 5 }],
     });
 
