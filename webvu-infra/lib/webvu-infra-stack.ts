@@ -69,7 +69,7 @@ export class WebvuInfraStack extends cdk.Stack {
 
     const apiImageTag = 'v26.5.2.2';
     const uiImageTag = 'v26.5.2.2';
-    const desiredCount = (apiImageTag === 'latest' || uiImageTag === 'latest') ? 0 : 1;
+    const desiredCount = 1;
 
     // --- API Service ---
     const apiTaskDef = new ecs.FargateTaskDefinition(this, 'ApiTaskDef', {
