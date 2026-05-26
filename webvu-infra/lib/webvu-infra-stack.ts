@@ -55,9 +55,9 @@ export class WebvuInfraStack extends cdk.Stack {
     // ACM certificate — CDK pauses here until DNS validation is complete.
     // Add the CNAME record shown in CloudFormation events to Cloudflare (DNS-only, NOT proxied).
     const certificate = new acm.Certificate(this, 'WebvuCert', {
-      domainName: 'webvui.io',
-      // *.webvui.io covers www, plus all tenant subdomains (mybakery.webvui.io, etc.)
-      subjectAlternativeNames: ['*.webvui.io'],
+      domainName: 'webvu.io',
+      // *.webvu.io covers www, plus all tenant subdomains (mybakery.webvu.io, etc.)
+      subjectAlternativeNames: ['*.webvu.io'],
       validation: acm.CertificateValidation.fromDns(),
     });
 
@@ -112,7 +112,7 @@ export class WebvuInfraStack extends cdk.Stack {
         logRetention: logs.RetentionDays.ONE_WEEK,
       }),
       environment: {
-        NEXT_PUBLIC_API_URL: 'https://webvui.io',
+        NEXT_PUBLIC_API_URL: 'https://webvu.io',
       },
     });
 
@@ -155,7 +155,7 @@ export class WebvuInfraStack extends cdk.Stack {
     });
 
     // Route 53 alias record — updated on every deploy, no tokens needed.
-    // Cloudflare proxies webvui.io → origin.webvui.io (static CNAME) → this alias → ALB.
+    // Cloudflare proxies webvu.io → origin.webvu.io (static CNAME) → this alias → ALB.
     new route53.ARecord(this, 'AlbAlias', {
       zone: props.originZone,
       target: route53.RecordTarget.fromAlias(new route53targets.LoadBalancerTarget(alb)),

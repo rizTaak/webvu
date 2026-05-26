@@ -24,17 +24,17 @@ export class WebvuEcrStack extends cdk.Stack {
       lifecycleRules: [{ maxImageCount: 5 }],
     });
 
-    // Permanent Route 53 zone for origin.webvui.io.
+    // Permanent Route 53 zone for origin.webvu.io.
     // WebvuInfraStack creates an ALB alias record here on every deploy — the Cloudflare
     // NS delegation below never changes, so no tokens or secrets are ever needed.
     this.originZone = new route53.PublicHostedZone(this, 'OriginZone', {
-      zoneName: 'origin.webvui.io',
+      zoneName: 'origin.webvu.io',
     });
     this.originZone.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN);
 
     // Output the nameservers — you only read these once to set up Cloudflare NS records.
     new cdk.CfnOutput(this, 'OriginZoneNameservers', {
-      description: 'Add as NS records for origin.webvui.io in Cloudflare (one-time setup, never changes)',
+      description: 'Add as NS records for origin.webvu.io in Cloudflare (one-time setup, never changes)',
       value: cdk.Fn.join(', ', this.originZone.hostedZoneNameServers!),
     });
   }
