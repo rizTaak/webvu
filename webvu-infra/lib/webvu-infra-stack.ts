@@ -4,10 +4,17 @@ import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import * as route53 from 'aws-cdk-lib/aws-route53';
+import * as route53targets from 'aws-cdk-lib/aws-route53-targets';
 import { Construct } from 'constructs';
 
+export interface WebvuInfraStackProps extends cdk.StackProps {
+  originZone: route53.IHostedZone;
+}
+
 export class WebvuInfraStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props: WebvuInfraStackProps) {
     super(scope, id, props);
 
     // VPC — 2 AZs, single NAT gateway to keep costs minimal
@@ -19,10 +26,46 @@ export class WebvuInfraStack extends cdk.Stack {
     // ECS Cluster
     const cluster = new ecs.Cluster(this, 'WebvuCluster', { vpc });
 
+    // ALB security group — only Cloudflare IPs allowed in (https://www.cloudflare.com/ips/)
+    // This prevents anyone from bypassing Cloudflare and hitting the ALB directly.
+    const cloudflareIpv4 = [
+      '103.21.244.0/22', '103.22.200.0/22', '103.31.4.0/22',
+      '104.16.0.0/13', '104.24.0.0/14', '108.162.192.0/18',
+      '131.0.72.0/22', '141.101.64.0/18', '162.158.0.0/15',
+      '172.64.0.0/13', '173.245.48.0/20', '188.114.96.0/20',
+      '190.93.240.0/20', '197.234.240.0/22', '198.41.128.0/17',
+    ];
+    const cloudflareIpv6 = [
+      '2400:cb00::/32', '2606:4700::/32', '2803:f800::/32',
+      '2405:b500::/32', '2405:8100::/32', '2a06:98c0::/29', '2c0f:f248::/32',
+    ];
+
+    const albSg = new ec2.SecurityGroup(this, 'AlbSg', {
+      vpc,
+      description: 'ALB: allow inbound on port 443 from Cloudflare IPs only',
+      allowAllOutbound: true,
+    });
+    for (const cidr of cloudflareIpv4) {
+      albSg.addIngressRule(ec2.Peer.ipv4(cidr), ec2.Port.tcp(443), 'Cloudflare IPv4');
+    }
+    for (const cidr of cloudflareIpv6) {
+      albSg.addIngressRule(ec2.Peer.ipv6(cidr), ec2.Port.tcp(443), 'Cloudflare IPv6');
+    }
+
+    // ACM certificate — CDK pauses here until DNS validation is complete.
+    // Add the CNAME record shown in CloudFormation events to Cloudflare (DNS-only, NOT proxied).
+    const certificate = new acm.Certificate(this, 'WebvuCert', {
+      domainName: 'webvui.io',
+      // *.webvui.io covers www, plus all tenant subdomains (mybakery.webvui.io, etc.)
+      subjectAlternativeNames: ['*.webvui.io'],
+      validation: acm.CertificateValidation.fromDns(),
+    });
+
     // Application Load Balancer
     const alb = new elbv2.ApplicationLoadBalancer(this, 'WebvuAlb', {
       vpc,
       internetFacing: true,
+      securityGroup: albSg,
     });
 
     // --- ECR Repositories (managed by WebvuEcrStack, referenced by name) ---
@@ -69,7 +112,7 @@ export class WebvuInfraStack extends cdk.Stack {
         logRetention: logs.RetentionDays.ONE_WEEK,
       }),
       environment: {
-        NEXT_PUBLIC_API_URL: `http://${alb.loadBalancerDnsName}`,
+        NEXT_PUBLIC_API_URL: 'https://webvui.io',
       },
     });
 
@@ -89,9 +132,11 @@ export class WebvuInfraStack extends cdk.Stack {
       healthCheck: { path: '/' },
     });
 
-    const listener = alb.addListener('HttpListener', {
-      port: 80,
+    const listener = alb.addListener('HttpsListener', {
+      port: 443,
+      certificates: [certificate],
       defaultTargetGroups: [uiTargetGroup],
+      open: false, // Don't auto-add 0.0.0.0/0 — Cloudflare SG handles ingress
     });
 
     // Path rule: /api/* → API service
@@ -107,6 +152,13 @@ export class WebvuInfraStack extends cdk.Stack {
       priority: 10,
       conditions: [elbv2.ListenerCondition.pathPatterns(['/api/*'])],
       action: elbv2.ListenerAction.forward([apiTargetGroup]),
+    });
+
+    // Route 53 alias record — updated on every deploy, no tokens needed.
+    // Cloudflare proxies webvui.io → origin.webvui.io (static CNAME) → this alias → ALB.
+    new route53.ARecord(this, 'AlbAlias', {
+      zone: props.originZone,
+      target: route53.RecordTarget.fromAlias(new route53targets.LoadBalancerTarget(alb)),
     });
 
     // Outputs
