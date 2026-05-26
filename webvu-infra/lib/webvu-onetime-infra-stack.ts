@@ -5,7 +5,7 @@ import { Construct } from 'constructs';
 
 // Permanent stack — never destroyed, survives compute teardowns.
 // Holds ECR repos, images, and the ACM certificate so teardowns never require re-validation.
-export class WebvuEcrStack extends cdk.Stack {
+export class WebvuOnetimeInfraStack extends cdk.Stack {
   readonly certificateArn: string;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
