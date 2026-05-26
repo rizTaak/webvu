@@ -12,7 +12,7 @@ const env = {
 };
 
 // Permanent — never destroy this stack (holds ECR repos, images, and ACM cert)
-const ecrStack = new WebvuOnetimeInfraStack(app, 'WebvuEcrStack', { env });
+const ecrStack = new WebvuOnetimeInfraStack(app, 'WebvuOnetimeInfraStack', { env });
 
 // Compute — safe to destroy when not in use to save costs
 new WebvuInfraStack(app, 'WebvuInfraStack', { env, certificateArn: ecrStack.certificateArn });

@@ -34,8 +34,8 @@ jobs:
           role-to-assume: arn:aws:iam::796136114678:role/webvu-github-actions
           aws-region: us-east-1
 
-      - name: CDK deploy ECR stack
-        run: npx cdk deploy WebvuEcrStack --require-approval never
+      - name: CDK deploy onetime infra stack
+        run: npx cdk deploy WebvuOnetimeInfraStack --require-approval never
         working-directory: webvu-infra
 
       - name: CDK deploy infra stack

@@ -13,13 +13,11 @@ export class WebvuOnetimeInfraStack extends cdk.Stack {
 
     new ecr.Repository(this, 'ApiRepo', {
       repositoryName: 'webvu-api',
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
       lifecycleRules: [{ maxImageCount: 5 }],
     });
 
     new ecr.Repository(this, 'UiRepo', {
       repositoryName: 'webvu-ui',
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
       lifecycleRules: [{ maxImageCount: 5 }],
     });
 
