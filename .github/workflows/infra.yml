@@ -1,14 +1,9 @@
 name: Infra - Deploy
 
 on:
-  workflow_dispatch:
-    inputs:
-      apiImageTag:
-        description: 'API image tag to deploy (e.g. v1.0.0)'
-        required: true
-      uiImageTag:
-        description: 'UI image tag to deploy (e.g. v1.0.0)'
-        required: true
+  push:
+    tags:
+      - 'infra-v*'
 
 jobs:
   deploy:
@@ -39,10 +34,7 @@ jobs:
         working-directory: webvu-infra
 
       - name: CDK deploy infra stack
-        run: |
-          npx cdk deploy WebvuInfraStack --require-approval never \
-            --context apiImageTag=${{ github.event.inputs.apiImageTag }} \
-            --context uiImageTag=${{ github.event.inputs.uiImageTag }}
+        run: npx cdk deploy WebvuInfraStack --require-approval never
         working-directory: webvu-infra
 
       - name: Output ALB DNS name
