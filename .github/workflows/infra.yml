@@ -22,7 +22,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Install infra dependencies
         run: npm ci
@@ -33,6 +33,7 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::796136114678:role/webvu-github-actions
           aws-region: us-east-1
+          role-duration-seconds: 7200
 
       - name: CDK deploy
         run: |

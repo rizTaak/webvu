@@ -61,6 +61,7 @@ export class WebvuInfraStack extends cdk.Stack {
       cluster,
       taskDefinition: apiTaskDef,
       desiredCount: 1,
+      circuitBreaker: { rollback: false },
     });
 
     // --- UI Service ---
@@ -85,6 +86,7 @@ export class WebvuInfraStack extends cdk.Stack {
       cluster,
       taskDefinition: uiTaskDef,
       desiredCount: 1,
+      circuitBreaker: { rollback: false },
     });
 
     // --- ALB Listener ---
