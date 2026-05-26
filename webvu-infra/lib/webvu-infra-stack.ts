@@ -67,8 +67,8 @@ export class WebvuInfraStack extends cdk.Stack {
     const apiRepo = ecr.Repository.fromRepositoryName(this, 'ApiRepo', 'webvu-api');
     const uiRepo = ecr.Repository.fromRepositoryName(this, 'UiRepo', 'webvu-ui');
 
-    const apiImageTag = 'latest';
-    const uiImageTag = 'latest';
+    const apiImageTag = 'v26.5.2.2';
+    const uiImageTag = 'v26.5.2.2';
     const desiredCount = (apiImageTag === 'latest' || uiImageTag === 'latest') ? 0 : 1;
 
     // --- API Service ---
