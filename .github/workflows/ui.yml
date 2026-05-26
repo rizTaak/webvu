@@ -32,5 +32,5 @@ jobs:
       - name: Build and push
         run: |
           IMAGE_URI="${{ steps.ecr-login.outputs.registry }}/webvu-ui:${{ steps.tag.outputs.IMAGE_TAG }}"
-          docker build -t "$IMAGE_URI" webvu-ui/
+          docker build --build-arg NEXT_PUBLIC_API_URL=https://webvu.io -t "$IMAGE_URI" webvu-ui/
           docker push "$IMAGE_URI"

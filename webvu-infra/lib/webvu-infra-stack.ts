@@ -107,9 +107,6 @@ export class WebvuInfraStack extends cdk.Stack {
         streamPrefix: 'webvu-ui',
         logRetention: logs.RetentionDays.ONE_WEEK,
       }),
-      environment: {
-        NEXT_PUBLIC_API_URL: 'https://webvu.io',
-      },
     });
 
     const uiService = new ecs.FargateService(this, 'UiService', {
