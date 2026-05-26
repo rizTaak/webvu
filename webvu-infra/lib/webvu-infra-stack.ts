@@ -25,18 +25,9 @@ export class WebvuInfraStack extends cdk.Stack {
       internetFacing: true,
     });
 
-    // --- ECR Repositories (images pushed by CI) ---
-    const apiRepo = new ecr.Repository(this, 'ApiRepo', {
-      repositoryName: 'webvu-api',
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      lifecycleRules: [{ maxImageCount: 5 }],
-    });
-
-    const uiRepo = new ecr.Repository(this, 'UiRepo', {
-      repositoryName: 'webvu-ui',
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      lifecycleRules: [{ maxImageCount: 5 }],
-    });
+    // --- ECR Repositories (managed by WebvuEcrStack, referenced by name) ---
+    const apiRepo = ecr.Repository.fromRepositoryName(this, 'ApiRepo', 'webvu-api');
+    const uiRepo = ecr.Repository.fromRepositoryName(this, 'UiRepo', 'webvu-ui');
 
     // Image tags passed in via cdk deploy --context apiImageTag=v1.0.0
     const apiImageTag = this.node.tryGetContext('apiImageTag') ?? 'latest';

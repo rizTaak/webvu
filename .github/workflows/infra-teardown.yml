@@ -1,0 +1,32 @@
+name: Infra - Teardown
+
+on:
+  workflow_dispatch:
+
+jobs:
+  teardown:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install infra dependencies
+        run: npm ci
+        working-directory: webvu-infra
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::796136114678:role/webvu-github-actions
+          aws-region: us-east-1
+
+      - name: Destroy compute stack (ECR stack is preserved)
+        run: npx cdk destroy WebvuInfraStack --force
+        working-directory: webvu-infra
