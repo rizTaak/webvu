@@ -4,12 +4,15 @@
 
 Webvu is a platform that lets users create their own mini websites for their small businesses. Each user gets a unique slug (e.g. `beardbaker`) and their website is accessible at `beardbaker.webvu.io`. Visitors to that URL see the user's website, not the Webvu product page at `webvu.io`.
 
-Each user website supports five pages:
+Each user website supports six pages:
 - **Landing** — business intro, hero, features
+- **About** — business story, team, values
 - **Products** — product catalogue
 - **Services** — list of services offered
 - **Contact** — contact form
 - **Order** — order form
+
+Every website also has a configurable **header** (logo, business name, page navigation) and **footer** (social media links) that appear on all pages.
 
 Users build each page by stacking pre-built block components. They can customise the look and feel of their whole website (colours, font, border radius) through a theme editor. The website structure and theme are stored as JSON and rendered dynamically when a visitor browses the slug.
 
@@ -46,10 +49,13 @@ src/app/
       blocks/
         HeroBlock.tsx
         FeatureListBlock.tsx
+        AboutBlock.tsx
         ProductGridBlock.tsx
         ServicesBlock.tsx
         ContactFormBlock.tsx
         OrderFormBlock.tsx
+      SiteHeader.tsx               ← rendered from header config on every page
+      SiteFooter.tsx               ← rendered from footer config on every page
 ```
 
 ### Per-User Theming
@@ -79,6 +85,18 @@ The full website (theme + pages + blocks) is stored as JSON in the backend and f
   "slug": "beardbaker",
   "name": "Beard Baker",
   "theme": { ... },
+  "header": {
+    "logoUrl": "https://...",
+    "businessName": "Beard Baker"
+  },
+  "footer": {
+    "socialLinks": [
+      { "platform": "instagram", "url": "https://instagram.com/beardbaker" },
+      { "platform": "facebook",  "url": "https://facebook.com/beardbaker" },
+      { "platform": "twitter",   "url": "https://x.com/beardbaker" },
+      { "platform": "tiktok",    "url": "https://tiktok.com/@beardbaker" }
+    ]
+  },
   "pages": [
     {
       "path": "/",
@@ -103,6 +121,13 @@ The full website (theme + pages + blocks) is stored as JSON in the backend and f
             "items": ["Natural ingredients", "Free shipping", "30-day returns"]
           }
         }
+      ]
+    },
+    {
+      "path": "/about",
+      "title": "About",
+      "blocks": [
+        { "id": "b7", "type": "about", "props": { "title": "Our Story", "body": "..." } }
       ]
     },
     {
@@ -145,6 +170,7 @@ The full website (theme + pages + blocks) is stored as JSON in the backend and f
 const BLOCK_MAP = {
   'hero':          HeroBlock,
   'feature-list':  FeatureListBlock,
+  'about':         AboutBlock,
   'product-grid':  ProductGridBlock,
   'services-list': ServicesBlock,
   'contact-form':  ContactFormBlock,
@@ -244,6 +270,8 @@ The modal is a two-step flow:
 - Real-time availability check (debounced API call)
 - Email field — defaults to the Google account email but can be overridden
 - This email is the **business notification email**: all order submissions and contact form submissions from the user's live website will be delivered here
+- **Terms of Service checkbox** — required, must be checked before the form can be submitted. Label reads: _"I agree to the [Terms of Service](https://webvu.io/terms) and [Privacy Policy](https://webvu.io/privacy)"_
+- **Altcha captcha widget** embedded at the bottom of the form — must be solved before submission is enabled
 
 **Step 2 — Email verification:**
 - A 6-digit verification code is sent to the provided email
@@ -259,7 +287,8 @@ After slug creation (or on return visits) the user sees the main dashboard with:
 
 **Sidebar / top nav:**
 - Website name + slug (with link to preview `<slug>.webvu.io`)
-- Page list — each of the five pages (Landing, Products, Services, Contact, Order) with a toggle to enable/disable the page on the live site
+- Page list — each of the six pages (Landing, About, Products, Services, Contact, Order) with a toggle to enable/disable the page on the live site
+- Header & Footer Editor link
 - Inbox link (with unread count badge)
 - Analytics link
 - Theme Editor link
@@ -288,6 +317,19 @@ Opened when the user selects a page from the nav. Shows a vertical stack of the 
 - Live preview of changes via CSS variable injection in the preview iframe
 - **Save** commits the theme as a new version
 
+**Header & Footer Editor (`dashboard.webvu.io/site-config`):**
+
+*Header config:*
+- Logo upload (image file; stored and served from object storage)
+- Business name field (pre-filled from website name)
+- Enabled pages are automatically listed as navigation links in the header — no manual configuration needed; order follows the page list order in the sidebar
+
+*Footer config:*
+- Social media link fields — one URL input per supported platform:
+  - Instagram, Facebook, X (Twitter), TikTok, LinkedIn, YouTube
+- Only platforms with a URL entered are shown in the rendered footer
+- **Save** commits header + footer config as part of a new version snapshot
+
 #### Versioning
 
 Every time the user saves (page blocks or theme), a new version snapshot of the full website JSON is stored on the backend.
@@ -304,7 +346,7 @@ When a visitor submits a form on the user's live website, the backend sends an e
 - **Contact form submission** — includes all fields the visitor filled in (name, message, etc.)
 - **Order form submission** — includes order details submitted by the visitor
 
-Submissions are also stored in the backend and accessible via the dashboard Inbox.
+**Contact Form block** and **Order Form block** on live user websites both include an **Altcha captcha widget** that must be solved before the form can be submitted. The captcha payload is submitted alongside the form data and verified server-side before the submission is stored or the notification email is sent.
 
 #### Inbox
 
@@ -391,10 +433,13 @@ Accessible from `dashboard.webvu.io/support`. Allows users to raise and track su
 | URL | Destination |
 |---|---|
 | `webvu.io` | Product landing page |
+| `webvu.io/terms` | Terms of Service |
+| `webvu.io/privacy` | Privacy Policy |
 | `webvu.io/login` | Auth page |
 | `dashboard.webvu.io` | Builder dashboard (authenticated) |
 | `dashboard.webvu.io/editor/[page]` | Page editor for a specific page |
 | `dashboard.webvu.io/theme` | Theme editor |
+| `dashboard.webvu.io/site-config` | Header & footer editor |
 | `dashboard.webvu.io/history` | Version history |
 | `dashboard.webvu.io/inbox` | Contact & order submissions inbox |
 | `dashboard.webvu.io/inbox/[id]` | Individual submission detail |
@@ -472,6 +517,29 @@ Accessible at `admin.webvu.io/support`. Visible to both `Admin` and `Support` ro
 
 ---
 
+### Legal
+
+Webvu must publish a **Terms of Service** and a **Privacy Policy** before launch, hosted at `webvu.io/terms` and `webvu.io/privacy` respectively.
+
+**Recommended generator:** [getterms.io/terms-and-conditions-generator](https://getterms.io/terms-and-conditions-generator) — drafts lawyer-reviewed documents, covers GDPR/CCPA, free tier available.
+
+**Key clauses the Terms of Service must include:**
+
+| Clause | Purpose |
+|---|---|
+| User content responsibility | User is solely responsible for all content published on their mini website |
+| No liability for user content | Webvu is not liable for any content, claims, or legal actions arising from a user's website |
+| No liability for transactions | Webvu is not liable for any orders, payments, or disputes between a user and their customers |
+| Platform provided "as is" | Webvu makes no warranties of uptime, fitness for purpose, or error-free operation |
+| Limitation of liability | Webvu's total liability is limited to the amount paid by the user in the preceding 12 months |
+| Prohibited content | Users must not publish illegal, defamatory, infringing, or harmful content |
+| Termination | Webvu reserves the right to suspend or terminate accounts that violate the terms |
+| Governing law | Specify applicable jurisdiction |
+
+**Acceptance is recorded at slug creation:** the `POST /slug` API stores a `termsAcceptedAt` timestamp on the `Website` entity when the user submits the form with the checkbox checked. The API rejects the request with `400` if `termsAccepted: true` is not present in the body.
+
+---
+
 ## API
 
 ### Tech Stack
@@ -506,6 +574,7 @@ OAuth provider linkage is stored in `OAuthAccount` (see Authentication section),
 | `name` | varchar | business display name |
 | `notificationEmail` | varchar | verified business email for notifications |
 | `notificationEmailVerified` | boolean | |
+| `termsAcceptedAt` | timestamp | set at slug creation; null if terms not yet accepted |
 | `theme` | jsonb | current theme object |
 | `pages` | jsonb | current pages + blocks array |
 | `ownerId` | uuid FK → User | |
@@ -581,7 +650,7 @@ _No separate entity — admin and support users are regular `User` rows with `ro
 | Method | Path | Auth | Description |
 |---|---|---|---|
 | `GET` | `/slug/check/:slug` | JWT | Check slug availability (`{ available: bool }`) |
-| `POST` | `/slug` | JWT | Create slug + send verification code to provided email |
+| `POST` | `/slug` | JWT | Create slug; body must include `termsAccepted: true` and valid Altcha payload; sends verification code to provided email; rejected with `400` if terms not accepted |
 | `POST` | `/slug/verify` | JWT | Submit 6-digit code; marks email verified and activates website |
 | `POST` | `/slug/resend-code` | JWT | Resend verification code (rate-limited) |
 
@@ -606,7 +675,7 @@ _No separate entity — admin and support users are regular `User` rows with `ro
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| `POST` | `/submissions/:slug` | public | Visitor submits contact or order form; stores submission + sends notification email to owner |
+| `POST` | `/submissions/:slug` | public | Visitor submits contact or order form; request body must include valid Altcha payload; stores submission + sends notification email to owner |
 | `GET` | `/submissions` | JWT | List owner's submissions; filterable by `type` and `status` |
 | `GET` | `/submissions/:id` | JWT | Get single submission detail; auto-transitions status from `unread` → `read` |
 | `PATCH` | `/submissions/:id/status` | JWT | Update submission status |
@@ -669,6 +738,36 @@ _No separate admin auth endpoint. Admin and support users log in via the same `P
 
 ---
 
+### Captcha — Altcha
+
+Altcha (<https://altcha.org>) is used for bot protection on public-facing forms. It is open source (MIT), self-hostable, and requires no external service or user account.
+
+**How it works:**
+Altcha uses a server-issued proof-of-work challenge. The browser widget solves the challenge client-side (CPU-bound, typically < 1 second) and produces a signed payload. The payload is submitted with the form and verified server-side. No cookies, no tracking, no third-party requests.
+
+**Protected surfaces:**
+| Surface | Form |
+|---|---|
+| Slug creation modal (Step 1) | `POST /slug` |
+| Contact form on live user website | `POST /submissions/:slug` |
+| Order form on live user website | `POST /submissions/:slug` |
+
+**Flow:**
+1. On form mount, browser calls `GET /captcha/challenge` to obtain a fresh challenge
+2. Altcha widget solves the challenge and emits a base64-encoded payload
+3. Payload is included in the form submission as `altchaPayload`
+4. Server calls the Altcha verification utility before processing the request; rejects with `400` if invalid or expired
+
+**Endpoint:**
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `GET` | `/captcha/challenge` | public | Issue a new Altcha proof-of-work challenge |
+
+Challenge expiry: 5 minutes. Solved payloads are stored server-side and rejected on reuse (replay protection).
+
+---
+
 ### Guards & Roles
 
 - `JwtAuthGuard` — validates JWT on protected user routes
@@ -687,6 +786,7 @@ src/
   versions/
   submissions/
   analytics/
+  captcha/          ← Altcha challenge issuance and payload verification
   support/
   admin/
     auth/
