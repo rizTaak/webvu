@@ -71,13 +71,13 @@ export class WebvuInfraStack extends cdk.Stack {
     const uiImageTag = 'v26.5.3.0';
     const desiredCount = 1;
 
-    // --- API Service ---
-    const apiTaskDef = new ecs.FargateTaskDefinition(this, 'ApiTaskDef', {
+    // --- App Task (API + UI combined into one task) ---
+    const appTaskDef = new ecs.FargateTaskDefinition(this, 'AppTaskDef', {
       memoryLimitMiB: 512,
       cpu: 256,
     });
 
-    apiTaskDef.addContainer('ApiContainer', {
+    appTaskDef.addContainer('ApiContainer', {
       image: ecs.ContainerImage.fromEcrRepository(apiRepo, apiImageTag),
       portMappings: [{ containerPort: 3000 }],
       logging: ecs.LogDrivers.awsLogs({
@@ -86,21 +86,7 @@ export class WebvuInfraStack extends cdk.Stack {
       }),
     });
 
-    const apiService = new ecs.FargateService(this, 'ApiService', {
-      cluster,
-      taskDefinition: apiTaskDef,
-      desiredCount,
-      vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
-      assignPublicIp: true,
-    });
-
-    // --- UI Service ---
-    const uiTaskDef = new ecs.FargateTaskDefinition(this, 'UiTaskDef', {
-      memoryLimitMiB: 512,
-      cpu: 256,
-    });
-
-    uiTaskDef.addContainer('UiContainer', {
+    appTaskDef.addContainer('UiContainer', {
       image: ecs.ContainerImage.fromEcrRepository(uiRepo, uiImageTag),
       portMappings: [{ containerPort: 3001 }],
       logging: ecs.LogDrivers.awsLogs({
@@ -109,9 +95,9 @@ export class WebvuInfraStack extends cdk.Stack {
       }),
     });
 
-    const uiService = new ecs.FargateService(this, 'UiService', {
+    const appService = new ecs.FargateService(this, 'AppService', {
       cluster,
-      taskDefinition: uiTaskDef,
+      taskDefinition: appTaskDef,
       desiredCount,
       vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
       assignPublicIp: true,
@@ -123,7 +109,10 @@ export class WebvuInfraStack extends cdk.Stack {
       vpc,
       port: 3001,
       protocol: elbv2.ApplicationProtocol.HTTP,
-      targets: [uiService],
+      targets: [appService.loadBalancerTarget({
+        containerName: 'UiContainer',
+        containerPort: 3001,
+      })],
       healthCheck: { path: '/' },
     });
 
@@ -139,7 +128,10 @@ export class WebvuInfraStack extends cdk.Stack {
       vpc,
       port: 3000,
       protocol: elbv2.ApplicationProtocol.HTTP,
-      targets: [apiService],
+      targets: [appService.loadBalancerTarget({
+        containerName: 'ApiContainer',
+        containerPort: 3000,
+      })],
       healthCheck: { path: '/api/hello' },
     });
 
