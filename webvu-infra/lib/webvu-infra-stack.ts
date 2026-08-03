@@ -67,8 +67,8 @@ export class WebvuInfraStack extends cdk.Stack {
     const apiRepo = ecr.Repository.fromRepositoryName(this, 'ApiRepo', 'webvu-api');
     const uiRepo = ecr.Repository.fromRepositoryName(this, 'UiRepo', 'webvu-ui');
 
-    const apiImageTag = 'v26.5.3.0';
-    const uiImageTag = 'v26.5.3.0';
+    const apiImageTag = 'v26.8.1.0';
+    const uiImageTag = 'v26.8.1.0';
     const desiredCount = 1;
 
     // --- App Task (API + UI combined into one task) ---
