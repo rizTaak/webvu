@@ -1,0 +1,49 @@
+/**
+ * Semantic tokens — the names components actually use.
+ * SPEC.md § Webvu Design System — "Semantic tokens".
+ *
+ * A role says what a colour is FOR, not what it looks like. Restyling the
+ * product means changing what a role maps to here; it never means touching a
+ * component. Dark mode will be a second file of the same role names.
+ */
+
+:root {
+  /* Surfaces */
+  --wv-surface: var(--wv-neutral-50);
+  --wv-surface-raised: hsl(0 0% 100%);
+  --wv-surface-sunken: var(--wv-neutral-100);
+  --wv-surface-inverse: var(--wv-neutral-900);
+  /* Makes the admin dashboard visibly not the user dashboard. */
+  --wv-surface-admin: var(--wv-neutral-800);
+
+  /* Text */
+  --wv-text: var(--wv-neutral-900);
+  --wv-text-muted: var(--wv-neutral-600);
+  --wv-text-subtle: var(--wv-neutral-500);
+  --wv-text-inverse: var(--wv-neutral-50);
+  --wv-text-on-brand: var(--wv-brand-contrast);
+
+  /* Interactive */
+  --wv-action: var(--wv-brand);
+  --wv-action-hover: var(--wv-brand-hover);
+  --wv-action-active: var(--wv-brand-active);
+  --wv-action-subtle: var(--wv-brand-subtle);
+  --wv-action-text: var(--wv-brand-contrast);
+  --wv-focus-ring: var(--wv-brand);
+
+  /* Lines */
+  --wv-border: var(--wv-neutral-200);
+  --wv-border-strong: var(--wv-neutral-300);
+}
+
+/**
+ * Motion tokens collapse under reduced-motion once, at the token layer, so
+ * no component handles the preference individually.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --wv-duration-fast: 0ms;
+    --wv-duration-base: 0ms;
+    --wv-duration-slow: 0ms;
+  }
+}

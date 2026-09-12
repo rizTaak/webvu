@@ -6,12 +6,20 @@
     "dev": "next dev -p 3001",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "build:tokens": "node scripts/build-tokens.mjs",
+    "prebuild": "node scripts/build-tokens.mjs",
+    "test": "vitest run",
+    "predev": "node scripts/build-tokens.mjs",
+    "pretest": "node scripts/build-tokens.mjs"
   },
   "dependencies": {
+    "@webvu/shared": "*",
     "next": "16.2.6",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -21,6 +29,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.11"
   }
 }

@@ -1,0 +1,71 @@
+# Local host-based routing for Webvu.
+#
+# Two tiers, per SPEC.md § Local Development:
+#
+#   default          plain http, no certificates
+#                      docker compose up -d
+#
+#   tls (opt-in)     https via Caddy's internal CA, so `Secure` cookies and
+#                    real Google OAuth redirect URIs behave as in production
+#                      CADDY_SCHEME=https CADDY_TLS_DIRECTIVE="tls internal" \
+#                        docker compose up -d
+#                    On WSL2 the browser runs on Windows, so Caddy's root CA
+#                    must be trusted in the Windows certificate store.
+#
+# The API and UI run on the host, not in containers, so Caddy has to dial back
+# out to them. CADDY_UPSTREAM_HOST says where "the host" is:
+#
+#   Docker Desktop + WSL2   containers live in a separate VM, so neither
+#                           host.docker.internal (that is the *Windows* host)
+#                           nor the bridge gateway reaches this distro. The
+#                           distro's own IP does, and it changes on restart.
+#   Docker Engine on Linux  host.docker.internal works via host-gateway.
+#
+# ./scripts/dev-up.sh detects the right value and exports it. Caddy preserves
+# the original Host header on reverse_proxy by default, which the subdomain
+# proxy depends on.
+{
+	admin off
+}
+
+(ui) {
+	{$CADDY_TLS_DIRECTIVE}
+	reverse_proxy {$CADDY_UPSTREAM_HOST:host.docker.internal}:3001
+}
+
+# --- Webvu's own surfaces -------------------------------------------------
+
+{$CADDY_SCHEME:http}://webvu.localhost {
+	import ui
+}
+
+{$CADDY_SCHEME:http}://dashboard.webvu.localhost {
+	import ui
+}
+
+{$CADDY_SCHEME:http}://admin.webvu.localhost {
+	import ui
+}
+
+# --- API ------------------------------------------------------------------
+
+{$CADDY_SCHEME:http}://api.webvu.localhost {
+	{$CADDY_TLS_DIRECTIVE}
+	reverse_proxy {$CADDY_UPSTREAM_HOST:host.docker.internal}:3000
+}
+
+# --- Assets: MinIO standing in for CloudFront + S3 ------------------------
+
+{$CADDY_SCHEME:http}://cdn.webvu.localhost {
+	{$CADDY_TLS_DIRECTIVE}
+	rewrite * /{$ASSETS_BUCKET:webvu-assets}{uri}
+	reverse_proxy minio:9000
+}
+
+# --- User websites --------------------------------------------------------
+# e.g. beardbaker.webvu.localhost. More specific blocks above win, so this
+# only catches actual slugs.
+
+{$CADDY_SCHEME:http}://*.webvu.localhost {
+	import ui
+}

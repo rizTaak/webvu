@@ -1,26 +1,69 @@
 @import "tailwindcss";
+@import "../styles/primitives.css";
+@import "../styles/semantic.light.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/**
+ * Tailwind v4 declares its theme in CSS rather than a JS config, which suits
+ * the token structure rather than fighting it. SPEC.md § Webvu Design System.
+ *
+ * `--color-*: initial` clears Tailwind's entire stock palette, so only
+ * token-backed utilities generate CSS. Note this is silent on its own — an
+ * off-brand class like `bg-blue-500` is simply ignored rather than erroring.
+ * The lint rule in SPEC.md is what turns that into a build failure.
+ */
+@theme {
+  --color-*: initial;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-surface: var(--wv-surface);
+  --color-surface-raised: var(--wv-surface-raised);
+  --color-surface-sunken: var(--wv-surface-sunken);
+  --color-surface-inverse: var(--wv-surface-inverse);
+  --color-surface-admin: var(--wv-surface-admin);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-text: var(--wv-text);
+  --color-text-muted: var(--wv-text-muted);
+  --color-text-subtle: var(--wv-text-subtle);
+  --color-text-inverse: var(--wv-text-inverse);
+  --color-text-on-brand: var(--wv-text-on-brand);
+
+  --color-action: var(--wv-action);
+  --color-action-hover: var(--wv-action-hover);
+  --color-action-active: var(--wv-action-active);
+  --color-action-subtle: var(--wv-action-subtle);
+
+  --color-accent: var(--wv-accent);
+  --color-accent-subtle: var(--wv-accent-subtle);
+
+  --color-border: var(--wv-border);
+  --color-border-strong: var(--wv-border-strong);
+
+  --color-success: var(--wv-success);
+  --color-warning: var(--wv-warning);
+  --color-danger: var(--wv-danger);
+  --color-info: var(--wv-info);
+
+  --radius-*: initial;
+  --radius-sm: var(--wv-radius-sm);
+  --radius-md: var(--wv-radius-md);
+  --radius-lg: var(--wv-radius-lg);
+  --radius-full: var(--wv-radius-full);
+
+  --font-sans: var(--wv-font-sans);
+  --font-display: var(--wv-font-display);
+
+  --shadow-sm: var(--wv-shadow-sm);
+  --shadow-md: var(--wv-shadow-md);
+  --shadow-lg: var(--wv-shadow-lg);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--wv-surface);
+  color: var(--wv-text);
+  font-family: var(--wv-font-sans);
+}
+
+/* Visible focus on every interactive element. SPEC.md § Accessibility. */
+:focus-visible {
+  outline: 2px solid var(--wv-focus-ring);
+  outline-offset: 2px;
 }

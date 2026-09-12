@@ -1,0 +1,22 @@
+{
+  "name": "webvu",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Webvu — mini websites for small businesses",
+  "workspaces": [
+    "packages/*",
+    "webvu-api",
+    "webvu-ui"
+  ],
+  "scripts": {
+    "build:shared": "npm run build --workspace @webvu/shared",
+    "dev:api": "npm run start:dev --workspace webvu-api",
+    "dev:ui": "npm run dev --workspace webvu-ui",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
