@@ -94,7 +94,7 @@ JWT payload:
 ### Tech Stack
 
 - **Framework**: Next.js 16 (App Router), React 19
-- **Component Library**: Shadcn/ui
+- **Component Library**: Shadcn/ui, vendored incrementally, one primitive at a time as pages need them — not the full catalogue up front. The product page slice vendors `Button`, `Card`, `Sheet` only
 - **Styling**: Tailwind CSS v4 — theme is declared in CSS via `@theme`, not a `tailwind.config.js`
 - **Theming**: CSS variables (Shadcn's built-in token system)
 - **Drag and drop**: `dnd-kit`
@@ -114,8 +114,8 @@ Next.js middleware detects subdomains and rewrites requests transparently:
 middleware.ts
 src/app/
   page.tsx                             ← webvu.io product page
-  terms/page.tsx
-  privacy/page.tsx
+  terms/page.tsx                       ← placeholder ahead of real legal copy, see § Legal
+  privacy/page.tsx                     ← placeholder ahead of real legal copy, see § Legal
   sites/
     [slug]/
       [[...path]]/
@@ -245,7 +245,10 @@ Discipline here is what keeps the rebrand cheap, so it is enforced rather than d
 - Tailwind's default colour palette is **cleared** in the `@theme` block, so `bg-blue-500` resolves to nothing. This alone is silent, which is why the lint rule below is not optional
 - A lint rule fails the build on a literal colour (`#`, `rgb(`, `hsl(`) in any file under `src/` other than `brand.ts`
 - A lint rule fails the build on a `--wv-*` name absent from `tokens.d.ts`, catching typos and stale tokens
-- Shadcn components are vendored once and their variables mapped to `--wv-*` at install time; the mapping lives with the component, not scattered through call sites
+- Shadcn components are vendored once and their variables mapped to `--wv-*` at install time; the mapping lives with the component, not scattered through call sites:
+  - Shadcn's own CSS variables (`--background`, `--primary`, `--card`, `--border`, `--ring`, `--destructive`, `--muted`, `--accent`, `--radius`, …) are re-pointed at the Webvu semantic layer in `src/styles/shadcn-bridge.css`, a `:root` block containing only `var(--wv-*)` references — never a literal
+  - This is safe alongside the per-user-website theming described in _Two theming systems_ above: that system also uses these same unprefixed Shadcn names, but only ever sets them inside the renderer iframe document (see _Isolation rule_), never in the product-page/dashboard/admin document where `shadcn-bridge.css` applies. The two mappings never share a document
+  - A vendored component file itself must never gain a literal colour or a `--wv-*` reference — only the bridge file does that translation. If a vendored component's default classes reference a Tailwind namespace slot Webvu hasn't defined, the fix is an extra alias in the bridge file or the `@theme` block, never an edit inside the vendored component itself
 
 #### Rebranding procedure
 
@@ -731,22 +734,22 @@ The dashboard uses optimistic-concurrency on draft saves: `PATCH /websites/me` s
 
 ### webvu.io — Product Page
 
-The public-facing marketing page at `webvu.io`. Fully static, no session, no personalisation. Contains a fixed header with anchor links to sections on the page and two CTAs.
+The public-facing marketing page at `webvu.io`. Fully static, no session, no personalisation.
 
-**Header:**
-- Logo / brand name on the left
-- Anchor links to page sections on the right (Features, How It Works, Pricing)
-- **`Login`** button — starts the Google OAuth flow
-- **`Start Creating`** button — starts the same Google OAuth flow
+**Header** (fixed):
+- Logo/wordmark, left, links to `/`
+- Anchor nav, right, links to `#features`, `#how-it-works`, `#pricing` — visible at `md` and above
+- **`Login`** and **`Start Creating`** buttons — both link to `http://dashboard.webvu.localhost` (production: `https://dashboard.webvu.io`). Real Google OAuth is a later slice (see _Authentication_); until it lands, both are plain links to the dashboard host, not an OAuth kick-off
+- Below `md`, the anchor nav and both buttons collapse into a drawer opened by a hamburger button
 
-Both buttons are identical in behaviour; they differ only in label and styling. On success the user lands on `dashboard.webvu.io`.
+**Sections, in this order:**
+1. **Hero** — headline, one-line subheadline, single `Start Creating` CTA
+2. **Features** (`#features`) — a 6-tile grid, one tile per: six pages, a block-based page builder, theming, a custom URL (`<slug>.webvu.io`), a submission inbox, visit analytics
+3. **How It Works** (`#how-it-works`) — 3 numbered steps: sign up → build your pages → share your link
+4. **Pricing** (`#pricing`) — **price-agnostic**: leads with the 30-day free trial and "one simple monthly plan, cancel anytime"; no dollar figure anywhere on the page. States plainly what happens at trial end, matching _Billing & Subscriptions_ § States: the site is taken offline, nothing is deleted, resubscribing restores it immediately. The actual price is deferred to `GET /billing/plan`, which does not exist yet (see _Open Questions_) — this section must not hardcode one
+5. **Footer** — copyright line, links to `/terms` and `/privacy`
 
-**Page sections (scrollable):**
-- Hero — headline, subheadline, `Start Creating` CTA
-- Features — what you get (six pages, blocks, theming, custom URL, inbox, analytics)
-- How It Works — 3-step explainer (sign up → build → share your link)
-- Pricing — free trial length, monthly price, what is included, what happens when the trial ends
-- Footer — links to Terms of Service and Privacy Policy
+**Responsive:** hero and footer stack below `sm`; the features grid is 1-column below `md`, 2-column at `md`, 3-column at `lg`; the header nav collapses to the drawer described above below `md`. Minimum supported width 320px.
 
 ---
 
@@ -1205,6 +1208,8 @@ Webvu stores no card data. The only Stripe identifiers held are the customer id 
 ## Legal
 
 Webvu must publish a **Terms of Service** and a **Privacy Policy** before launch, hosted at `webvu.io/terms` and `webvu.io/privacy`.
+
+**Interim state:** until real Terms and Privacy copy is drafted (see _Recommended generator_ below), `webvu.io/terms` and `webvu.io/privacy` ship as minimal placeholder pages stating the real text is pending, so the footer's links are never dead. `termsAcceptedAt` recording at slug creation (below) is unaffected — it records acceptance of whatever version is live at that time, placeholder or final.
 
 **Recommended generator:** [getterms.io/terms-and-conditions-generator](https://getterms.io/terms-and-conditions-generator) — drafts lawyer-reviewed documents, covers GDPR/CCPA, free tier available.
 
@@ -1989,6 +1994,7 @@ Target **WCAG 2.1 AA** on the dashboard, the product page, and all rendered bloc
 - Colour is never the only carrier of meaning (submission status and publish state use text labels alongside colour)
 - **Webvu's own** brand tokens are contrast-tested in CI: every `--wv-text*` on every `--wv-surface*` it is paired with must meet 4.5:1, and the check fails the build. A rebrand that breaks contrast cannot merge
 - **User-chosen** theme contrast is warned about but not enforced, as described in _Per-User Theming_ — it is their website, not ours
+- In-page anchor navigation (the product page's header nav, and any block's `anchorId` link to another block) scrolls smoothly rather than jumping, applied document-wide so every surface with hash links behaves the same way. Disabled under `prefers-reduced-motion: reduce`, consistent with how motion tokens already collapse to `0ms` there
 
 ### Internationalisation
 

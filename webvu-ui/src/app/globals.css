@@ -1,6 +1,11 @@
 @import "tailwindcss";
 @import "../styles/primitives.css";
 @import "../styles/semantic.light.css";
+@import "../styles/shadcn-bridge.css";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
 
 /**
  * Tailwind v4 declares its theme in CSS rather than a JS config, which suits
@@ -42,14 +47,47 @@
   --color-danger: var(--wv-danger);
   --color-info: var(--wv-info);
 
+  /*
+   * Shadcn/ui components (src/components/ui/) reference these standard,
+   * unprefixed names directly — never a --wv-* name or a literal. Values
+   * come from src/styles/shadcn-bridge.css, which points each one at the
+   * Webvu semantic layer above. SPEC.md § Webvu Design System —
+   * Enforcement.
+   */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-black: var(--black);
+
   --radius-*: initial;
   --radius-sm: var(--wv-radius-sm);
   --radius-md: var(--wv-radius-md);
   --radius-lg: var(--wv-radius-lg);
+  /* Card is the only vendored component asking for a rounding above
+     --wv-radius-lg; Webvu's scale tops out there, so xl reuses it. */
+  --radius-xl: var(--wv-radius-lg);
   --radius-full: var(--wv-radius-full);
 
   --font-sans: var(--wv-font-sans);
   --font-display: var(--wv-font-display);
+  /* CardTitle/SheetTitle use `font-heading`, not `font-display`. */
+  --font-heading: var(--wv-font-display);
 
   --shadow-sm: var(--wv-shadow-sm);
   --shadow-md: var(--wv-shadow-md);
@@ -66,4 +104,34 @@ body {
 :focus-visible {
   outline: 2px solid var(--wv-focus-ring);
   outline-offset: 2px;
+}
+
+/*
+ * In-page anchor links (product page header nav, a block's `anchorId`)
+ * scroll smoothly instead of jumping. Document-wide, since both surfaces
+ * use plain hash links. Off under reduced motion, matching how the motion
+ * tokens above already collapse to 0ms there. SPEC.md § Accessibility.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+/*
+ * Shadcn init/add inject their own :root/.dark literal-colour block, a
+ * duplicate @theme inline block, and a @layer base here. All are removed
+ * by design: colour and radius values come from shadcn-bridge.css instead,
+ * and the Webvu design tokens above are the single @theme block that maps
+ * them to Tailwind utilities — see SPEC.md § Webvu Design System —
+ * Enforcement for why a second, competing @theme block is not kept.
+ *
+ * Vendored components don't set a border colour on every `border-*`
+ * utility they use (e.g. Card's `border-t`), relying on a global default
+ * instead — this is that default, using the bridged token rather than
+ * shadcn's own literal-colour version of the same rule.
+ */
+@layer base {
+  * {
+    border-color: var(--border);
+  }
 }

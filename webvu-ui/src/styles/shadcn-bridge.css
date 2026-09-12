@@ -1,0 +1,48 @@
+/**
+ * Bridges Shadcn/ui's own (unprefixed) CSS variable names to Webvu's
+ * semantic layer, so vendored components stay unmodified, canonical
+ * Shadcn source. SPEC.md § Webvu Design System — Enforcement.
+ *
+ * Safe alongside per-user-website theming: that system sets these same
+ * variable names too, but only ever inside the site-renderer iframe
+ * document (see § Two theming systems — Isolation rule), never here.
+ */
+
+:root {
+  --background: var(--wv-surface);
+  --foreground: var(--wv-text);
+
+  --card: var(--wv-surface-raised);
+  --card-foreground: var(--wv-text);
+  --popover: var(--wv-surface-raised);
+  --popover-foreground: var(--wv-text);
+
+  --primary: var(--wv-action);
+  --primary-foreground: var(--wv-text-on-brand);
+
+  --secondary: var(--wv-surface-sunken);
+  --secondary-foreground: var(--wv-text);
+
+  --muted: var(--wv-surface-sunken);
+  --muted-foreground: var(--wv-text-muted);
+
+  /* Shadcn's "accent" is a subtle hover/highlight surface, not Webvu's
+     amber brand accent — pointing it at --wv-accent would turn every
+     hovered menu row amber. */
+  --accent: var(--wv-action-subtle);
+  --accent-foreground: var(--wv-text);
+
+  --destructive: var(--wv-danger);
+  /* No dedicated "on-danger" text token exists; --wv-danger is dark
+     enough for --wv-text-on-brand (light) to read clearly on it. */
+  --destructive-foreground: var(--wv-text-on-brand);
+
+  --border: var(--wv-border);
+  --input: var(--wv-border);
+  --ring: var(--wv-focus-ring);
+
+  /* Restores Tailwind's `black` key, wiped by `--color-*: initial` in
+     globals.css, for the Sheet/Dialog overlay scrim only — not a brand
+     token, so it borrows the darkest surface rather than a literal. */
+  --black: var(--wv-surface-inverse);
+}
