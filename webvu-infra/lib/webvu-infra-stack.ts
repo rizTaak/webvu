@@ -58,6 +58,9 @@ export class WebvuInfraStack extends cdk.Stack {
     appTaskDef.addContainer('UiContainer', {
       image: ecs.ContainerImage.fromEcrRepository(uiRepo, uiImageTag),
       portMappings: [{ containerPort: 3001 }],
+      // Next.js standalone binds to $HOSTNAME, which ECS sets to the task hostname; cloudflared
+      // reaches the UI via localhost, so listen on all interfaces.
+      environment: { HOSTNAME: '0.0.0.0' },
       logging: ecs.LogDrivers.awsLogs({
         streamPrefix: 'webvu-ui',
         logRetention: logs.RetentionDays.ONE_WEEK,
