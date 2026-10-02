@@ -84,6 +84,8 @@ export class WebvuInfraStack extends cdk.Stack {
       vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
       assignPublicIp: true, // outbound only (ECR pulls, cloudflared → Cloudflare); no inbound rules
       circuitBreaker: { rollback: true },
+      // Start the replacement task before stopping the old one so the tunnel always has a connector.
+      minHealthyPercent: 100,
     });
     // Removing the ALB left the service pointing at the deleted target groups (CloudFormation omits
     // the property rather than clearing it), which fails every later update. Clear it explicitly.
