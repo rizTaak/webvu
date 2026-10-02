@@ -77,7 +77,7 @@ export class WebvuInfraStack extends cdk.Stack {
       }),
     });
 
-    new ecs.FargateService(this, 'AppService', {
+    const appService = new ecs.FargateService(this, 'AppService', {
       cluster,
       taskDefinition: appTaskDef,
       desiredCount,
@@ -85,6 +85,9 @@ export class WebvuInfraStack extends cdk.Stack {
       assignPublicIp: true, // outbound only (ECR pulls, cloudflared → Cloudflare); no inbound rules
       circuitBreaker: { rollback: true },
     });
+    // Removing the ALB left the service pointing at the deleted target groups (CloudFormation omits
+    // the property rather than clearing it), which fails every later update. Clear it explicitly.
+    (appService.node.defaultChild as ecs.CfnService).addPropertyOverride('LoadBalancers', []);
 
     // Outputs
     new cdk.CfnOutput(this, 'ApiEcrUri', {
