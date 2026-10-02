@@ -1,21 +1,16 @@
 import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
-import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as logs from 'aws-cdk-lib/aws-logs';
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
-export interface WebvuInfraStackProps extends cdk.StackProps {
-  certificateArn: string;
-}
-
 export class WebvuInfraStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props: WebvuInfraStackProps) {
+  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // VPC — 2 AZs, single NAT gateway to keep costs minimal
+    // VPC — 2 AZs, public subnets only, no NAT gateway to keep costs minimal
     const vpc = new ec2.Vpc(this, 'WebvuVpc', {
       maxAzs: 2,
       natGateways: 0,
@@ -27,40 +22,14 @@ export class WebvuInfraStack extends cdk.Stack {
     // ECS Cluster
     const cluster = new ecs.Cluster(this, 'WebvuCluster', { vpc });
 
-    // ALB security group — only Cloudflare IPs allowed in (https://www.cloudflare.com/ips/)
-    // This prevents anyone from bypassing Cloudflare and hitting the ALB directly.
-    const cloudflareIpv4 = [
-      '103.21.244.0/22', '103.22.200.0/22', '103.31.4.0/22',
-      '104.16.0.0/13', '104.24.0.0/14', '108.162.192.0/18',
-      '131.0.72.0/22', '141.101.64.0/18', '162.158.0.0/15',
-      '172.64.0.0/13', '173.245.48.0/20', '188.114.96.0/20',
-      '190.93.240.0/20', '197.234.240.0/22', '198.41.128.0/17',
-    ];
-    const cloudflareIpv6 = [
-      '2400:cb00::/32', '2606:4700::/32', '2803:f800::/32',
-      '2405:b500::/32', '2405:8100::/32', '2a06:98c0::/29', '2c0f:f248::/32',
-    ];
-
-    const albSg = new ec2.SecurityGroup(this, 'AlbSg', {
-      vpc,
-      description: 'ALB: allow inbound on port 443 from Cloudflare IPs only',
-      allowAllOutbound: true,
-    });
-    for (const cidr of cloudflareIpv4) {
-      albSg.addIngressRule(ec2.Peer.ipv4(cidr), ec2.Port.tcp(443), 'Cloudflare IPv4');
-    }
-    for (const cidr of cloudflareIpv6) {
-      albSg.addIngressRule(ec2.Peer.ipv6(cidr), ec2.Port.tcp(443), 'Cloudflare IPv6');
-    }
-
-    // Certificate is managed in WebvuEcrStack (permanent) so it survives teardowns.
-    const certificate = acm.Certificate.fromCertificateArn(this, 'WebvuCert', props.certificateArn);
-
-    // Application Load Balancer
-    const alb = new elbv2.ApplicationLoadBalancer(this, 'WebvuAlb', {
-      vpc,
-      internetFacing: true,
-      securityGroup: albSg,
+    // No ALB — traffic arrives via a Cloudflare Tunnel. The cloudflared sidecar dials out to
+    // Cloudflare, so the task needs no inbound ports. Hostname/path routing to the containers
+    // (localhost:3000 for /api/*, localhost:3001 for the rest) is configured on the tunnel
+    // in the Cloudflare dashboard.
+    // Token is a SecureString created out-of-band (CloudFormation can't create SecureStrings):
+    //   aws ssm put-parameter --name /webvu/cloudflared-tunnel-token --type SecureString --value <token>
+    const tunnelToken = ssm.StringParameter.fromSecureStringParameterAttributes(this, 'TunnelToken', {
+      parameterName: '/webvu/cloudflared-tunnel-token',
     });
 
     // --- ECR Repositories (managed by WebvuEcrStack, referenced by name) ---
@@ -95,58 +64,26 @@ export class WebvuInfraStack extends cdk.Stack {
       }),
     });
 
-    const appService = new ecs.FargateService(this, 'AppService', {
+    appTaskDef.addContainer('CloudflaredContainer', {
+      image: ecs.ContainerImage.fromRegistry('cloudflare/cloudflared:2026.9.3'),
+      command: ['tunnel', '--no-autoupdate', 'run'],
+      secrets: { TUNNEL_TOKEN: ecs.Secret.fromSsmParameter(tunnelToken) },
+      logging: ecs.LogDrivers.awsLogs({
+        streamPrefix: 'webvu-cloudflared',
+        logRetention: logs.RetentionDays.ONE_WEEK,
+      }),
+    });
+
+    new ecs.FargateService(this, 'AppService', {
       cluster,
       taskDefinition: appTaskDef,
       desiredCount,
       vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
-      assignPublicIp: true,
-    });
-
-    // --- ALB Listener ---
-    // Default action: route to UI
-    const uiTargetGroup = new elbv2.ApplicationTargetGroup(this, 'UiTG', {
-      vpc,
-      port: 3001,
-      protocol: elbv2.ApplicationProtocol.HTTP,
-      targets: [appService.loadBalancerTarget({
-        containerName: 'UiContainer',
-        containerPort: 3001,
-      })],
-      healthCheck: { path: '/' },
-    });
-
-    const listener = alb.addListener('HttpsListener', {
-      port: 443,
-      certificates: [certificate],
-      defaultTargetGroups: [uiTargetGroup],
-      open: false, // Don't auto-add 0.0.0.0/0 — Cloudflare SG handles ingress
-    });
-
-    // Path rule: /api/* → API service
-    const apiTargetGroup = new elbv2.ApplicationTargetGroup(this, 'ApiTG', {
-      vpc,
-      port: 3000,
-      protocol: elbv2.ApplicationProtocol.HTTP,
-      targets: [appService.loadBalancerTarget({
-        containerName: 'ApiContainer',
-        containerPort: 3000,
-      })],
-      healthCheck: { path: '/api/hello' },
-    });
-
-    listener.addAction('ApiAction', {
-      priority: 10,
-      conditions: [elbv2.ListenerCondition.pathPatterns(['/api/*'])],
-      action: elbv2.ListenerAction.forward([apiTargetGroup]),
+      assignPublicIp: true, // outbound only (ECR pulls, cloudflared → Cloudflare); no inbound rules
+      circuitBreaker: { rollback: true },
     });
 
     // Outputs
-    new cdk.CfnOutput(this, 'AlbDnsName', {
-      description: 'Application Load Balancer DNS name',
-      value: alb.loadBalancerDnsName,
-    });
-
     new cdk.CfnOutput(this, 'ApiEcrUri', {
       description: 'ECR repository URI for webvu-api',
       value: apiRepo.repositoryUri,

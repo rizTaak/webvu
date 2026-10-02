@@ -31,4 +31,4 @@ jobs:
             aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE" --desired-count 0
           done
 
-          echo "Done. ALB stays live (~\$16/month). Run 'Infra - Scale Up' to restore traffic."
+          echo "Done. No compute running; only the CloudWatch logs remain. Run 'Infra - Scale Up' to restore traffic."

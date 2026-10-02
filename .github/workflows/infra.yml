@@ -37,14 +37,8 @@ jobs:
         run: npx cdk deploy WebvuInfraStack --require-approval never
         working-directory: webvu-infra
 
-      - name: Output ALB DNS name
+      - name: Post-deploy notes
         run: |
-          ALB_DNS=$(aws cloudformation describe-stacks \
-            --stack-name WebvuInfraStack \
-            --query 'Stacks[0].Outputs[?OutputKey==`AlbDnsName`].OutputValue' \
-            --output text)
-          echo "ALB DNS: $ALB_DNS"
-          echo "If this is a fresh deploy (new ALB), update Cloudflare DNS:"
-          echo "  webvu.io CNAME -> $ALB_DNS (proxied)"
-          echo "  www.webvu.io CNAME -> $ALB_DNS (proxied)"
-          echo "  *.webvu.io CNAME -> $ALB_DNS (proxied)"
+          echo "Traffic is served via Cloudflare Tunnel (no ALB)."
+          echo "Public hostnames/routes are configured on the tunnel in the Cloudflare dashboard."
+          echo "Tunnel token is read from SSM: /webvu/cloudflared-tunnel-token"
