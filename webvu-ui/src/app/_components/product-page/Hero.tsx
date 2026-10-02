@@ -16,10 +16,7 @@ export function Hero() {
       </p>
       <a
         href={DASHBOARD_URL}
-        className={buttonVariants({
-          size: 'lg',
-          className: 'mt-2 w-full px-6 py-3 text-base sm:w-auto',
-        })}
+        className={buttonVariants({ className: 'mt-2 w-full sm:w-auto' })}
       >
         Start Creating
       </a>
